@@ -119,7 +119,7 @@ class VideoDataset(Dataset):
             return False
         else:
             return True
-    
+
     def randomflip(self, buffer):
         """Horizontally flip the given image and ground truth randomly with a probability of 0.5."""
 
@@ -130,7 +130,7 @@ class VideoDataset(Dataset):
 
         return buffer
 
-    
+
     def check_preprocess(self):
         # TODO: Check image size in output_dir
         if not os.path.exists(self.output_dir):
@@ -176,7 +176,7 @@ class VideoDataset(Dataset):
                         test_files.append(f_name)
             train_dir = os.path.join(self.output_dir, 'train', file)
             test_dir = os.path.join(self.output_dir, 'test', file)
-  
+
             if not os.path.exists(train_dir):
                 os.mkdir(train_dir)
             if not os.path.exists(test_dir):
@@ -189,8 +189,8 @@ class VideoDataset(Dataset):
                 self.process_video(video, file, test_dir)
 
         print('Preprocessing finished.')
-        
-        
+
+
     def normalize(self, buffer):
         buffer=buffer/255
         for i, frame in enumerate(buffer):
@@ -199,10 +199,10 @@ class VideoDataset(Dataset):
             buffer[i] = frame
 
         return buffer
-    
+
     def to_tensor(self, buffer):
         return buffer.transpose((0, 3, 1, 2))
-    
+
     def crop(self, buffer, clip_len, crop_size):
         # randomly select time index for temporal jittering
         if buffer.shape[0] - clip_len>0 and self.split=='train':
@@ -225,7 +225,7 @@ class VideoDataset(Dataset):
                  width_index:width_index + crop_size, :]
 
         return buffer
-    
+
     def process_video(self, video, action_name, save_dir):
         # Initialize a VideoCapture object to read video data into a numpy array
         video_filename = video.split('.')[0]
@@ -321,8 +321,8 @@ class coco_cap_dataset(Dataset):
 
 def coco_cap_batchgen(caption_dir, image_dir,num_workers=1, batch_size=1):
         # transformations for the images
-        train_ann=os.path.join(caption_dir,'captions_train2017.json')
-        val_ann=os.path.join(caption_dir,'captions_val2017.json')
+        train_ann=os.path.join(caption_dir,'fashion_dataset_train.json')
+        val_ann=os.path.join(caption_dir,'fashion_dataset_test.json')
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         transformer = transforms.Compose([
             transforms.RandomResizedCrop(224),
@@ -336,10 +336,10 @@ def coco_cap_batchgen(caption_dir, image_dir,num_workers=1, batch_size=1):
         # the data loader
         dataloader = DataLoader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=True,
                                      collate_fn=coco_collate_fn, drop_last=True,pin_memory=True)
-       
+
         # the iterator over data loader
         itr = iter(cycle(dataloader))
-        
+
         val_tfms = transforms.Compose([
                                         transforms.Resize(int(224*1.14)),
                                         transforms.CenterCrop(224),
@@ -350,9 +350,9 @@ def coco_cap_batchgen(caption_dir, image_dir,num_workers=1, batch_size=1):
         val_dl= DataLoader(val_dataset, num_workers=num_workers, batch_size=int(batch_size/2),
                                      collate_fn=coco_collate_fn, drop_last=False,pin_memory=True)
         return itr, val_dl
-                    
 
-    
+
+
 def cycle(iterable):
     while True:
         for x in iterable:
@@ -483,12 +483,12 @@ class penn_dataset(Dataset):
             for i in range(0,len(f),2):
                 if len(f[i].split(' ', maxsplit=1)[1].split(' '))<max_len:
                     self.X.append(f[i])
-                    self.Y.append(f[i+1])      
+                    self.Y.append(f[i+1])
             assert len(self.X) == len(self.Y),\
             "mismatch in number of sentences & associated POS tags"
             self.count = len(self.X)
             del(f)
-        
+
     def __len__(self):
         return self.count
 
@@ -496,15 +496,15 @@ class penn_dataset(Dataset):
         return (self.X[idx].split(' ', maxsplit=1)[1],
                 self.Y[idx].split()[1:])
 
-    
+
 class PennCollate:
     def __init__(self,vocab_file):
         with open(vocab_file,'r') as f:
             data=json.loads(f.read())
         self.tag_to_id=data['tag_to_id']
         self.id_to_tag=data['id_to_tag']
-        
-        
+
+
     def __call__(self,batch):
         pad_token=self.tag_to_id['<PAD>']
         text=[]
@@ -522,7 +522,7 @@ class PennCollate:
         pad_mask=tokens.eq(pad_token)
         #Add padding to the tokens
         return {'text':text,'tokens':tokens,'pad_mask':pad_mask,'pad_id':pad_token}
-    
+
 def penn_dataloader(data_dir, batch_size=1, test_batch_size=1,num_workers=8,vocab_file='conf/penn_vocab.json'):
         train_file=os.path.join(data_dir,'train.txt')
         val_file=os.path.join(data_dir,'dev.txt')
@@ -536,8 +536,3 @@ def penn_dataloader(data_dir, batch_size=1, test_batch_size=1,num_workers=8,voca
         test_dl=DataLoader(test_dataset,num_workers=num_workers,batch_size=test_batch_size,collate_fn=collate_class)
         train_dl=iter(cycle(train_dl))
         return train_dl,val_dl,test_dl
-    
-
-
-
-

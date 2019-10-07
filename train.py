@@ -17,7 +17,7 @@
 """
 Authors: Subhojeet Pramanik
 
-OmniNet training script. 
+OmniNet training script.
 
 """
 import argparse
@@ -41,10 +41,10 @@ from tqdm import tqdm
 from libs.utils.train_util import *
 
 
-coco_images = 'data/coco/train_val'
-caption_dir = 'data/coco'
+coco_images = '/home/ubuntu/filestore/fashion_gen_data'
+caption_dir = '/home/ubuntu/filestore/keshav/omninet/data'
 vqa_dir = 'data/vqa'
-model_save_path = 'checkpoints'
+model_save_path = '/home/ubuntu/filestore/keshav/omninet/weights'
 hmdb_data_dir='data/hmdb'
 hmdb_process_dir='data/hmdbprocess'
 penn_data_dir='data/penn'
@@ -59,7 +59,7 @@ def train(shared_model, task, batch_size, train_steps, gpu_id, start,  restore, 
     if (log == True):
         summary_writer = SummaryWriter(log_dir)
     # Create local model
-     
+
     torch.manual_seed(int(random.random() * 1000))
     if gpu_id>0:
         model = omninet.OmniNet(gpu_id=gpu_id)
@@ -72,7 +72,7 @@ def train(shared_model, task, batch_size, train_steps, gpu_id, start,  restore, 
         DL,val_dl = dl.coco_cap_batchgen(caption_dir=caption_dir, image_dir=coco_images,
                                   num_workers=8,
                                   batch_size=batch_size)
-        
+
         optimizer = ScheduledOptim(
             Adam(
                 filter(lambda x: x.requires_grad, shared_model.parameters()),
@@ -102,7 +102,7 @@ def train(shared_model, task, batch_size, train_steps, gpu_id, start,  restore, 
                 filter(lambda x: x.requires_grad, shared_model.parameters()),
                 betas=(0.9, 0.98), eps=1e-09),
             512, 16000,restore,init_lr=0.02)
-        
+
     model=model.train()
 
     for i in range(start, train_steps):
@@ -112,7 +112,7 @@ def train(shared_model, task, batch_size, train_steps, gpu_id, start,  restore, 
         if gpu_id > 0:
             with torch.cuda.device(gpu_id):
                 model.load_state_dict(shared_model.state_dict())
-                       
+
         # Calculate loss
         step = counter.increment()
         if task == 'caption':
@@ -149,7 +149,7 @@ def train(shared_model, task, batch_size, train_steps, gpu_id, start,  restore, 
             if log:
                 summary_writer.add_scalar('Loss', loss, step)
             print('Step %d, Caption Loss: %f, Accuracy:  %f %%' % (step, loss,acc))
-            
+
         elif task == 'vqa':
             if (log and eval_interval is not None and i % eval_interval == 0):
                 model = model.eval()
@@ -182,7 +182,7 @@ def train(shared_model, task, batch_size, train_steps, gpu_id, start,  restore, 
             else:
                 imgs = batch['img']
                 answers = batch['ans']
-            questions = batch['ques']                       
+            questions = batch['ques']
             _, loss,acc = r.vqa(model, imgs, questions, targets=answers)
             loss.backward()
             loss=loss.detach()
@@ -200,7 +200,7 @@ def train(shared_model, task, batch_size, train_steps, gpu_id, start,  restore, 
                     vid,labels = b
                     if gpu_id >= 0:
                         vid = vid.cuda(device=gpu_id)
-                        labels = labels.cuda(device=gpu_id)    
+                        labels = labels.cuda(device=gpu_id)
                     _, loss,acc = r.hmdb(model, vid,targets=labels, mode='val')
                     val_loss += float(loss.detach().cpu().numpy())
                     val_acc+=acc
@@ -214,14 +214,14 @@ def train(shared_model, task, batch_size, train_steps, gpu_id, start,  restore, 
             vid,labels = next(DL)
             if gpu_id >= 0:
                 vid = vid.cuda(device=gpu_id)
-                labels = labels.cuda(device=gpu_id)    
+                labels = labels.cuda(device=gpu_id)
             _, loss,acc = r.hmdb(model, vid,targets=labels,return_str_preds=True)
             loss.backward()
             loss=loss.detach()
             if log:
                 summary_writer.add_scalar('Loss', loss, step)
             print('Step %d, HMDB Loss: %f, Accuracy:  %f %%' % (step, loss,acc))
-            
+
         elif task == 'penn':
             if (log and eval_interval is not None and i % eval_interval == 0):
                 model = model.eval()
@@ -262,7 +262,7 @@ def train(shared_model, task, batch_size, train_steps, gpu_id, start,  restore, 
             if log:
                 summary_writer.add_scalar('Loss', loss, step)
             print('Step %d, PENN Loss: %f, Accuracy:  %f %%' % (step, loss,acc))
-            
+
         # End Calculate loss
         if gpu_id>0:
             ensure_shared_grads(model, shared_model, gpu_id)
@@ -272,7 +272,7 @@ def train(shared_model, task, batch_size, train_steps, gpu_id, start,  restore, 
             shared_model.save(model_save_path, step)
         sys.stdout.flush()
 
-    
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='OmniNet training script.')
     parser.add_argument('n_iters', help='Number of iterations to train.')
@@ -284,7 +284,7 @@ if __name__ == '__main__':
     parser.add_argument('--restore', default=-1, help='Step from which to restore model training')
     parser.add_argument('--restore_last', help='Restore the latest version of the model.', action='store_true')
     parser.add_argument('--eval_interval', help='Interval after which to evaluate on the test/val set.', default=1000)
-    
+
     args = parser.parse_args()
     torch.manual_seed(47)
     mp.set_start_method('spawn',force=True)
@@ -320,7 +320,7 @@ if __name__ == '__main__':
         shared_model.restore(model_save_path, restore)
     else:
         restore=0
-        
+
     shared_model=shared_model.to(0)
     shared_model.share_memory()
     counters = [Counter(restore) for i in range(len(tasks))]
